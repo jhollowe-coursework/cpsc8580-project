@@ -1,2 +1,3 @@
 ansible~=4.8.0
 ansible-lint
+requests
