@@ -20,21 +20,21 @@ global_setup_commands = ["sudo apt update",
                          "sudo apt install -y openvswitch-switch"]
 
 
-nodes = {"r1": {"link_to": ["r2"], "setup_commands": ['pwd | sudo tee /setup_test.txt']},
-         "r2": {"link_to": ["r1"]},
-         "r3": {},
-         "r4": {},
-         "r5": {},
+nodes = {"r1": {"link_to": ["r2", "fw1"], "setup_commands": ['pwd | sudo tee /setup_test.txt']},
+         "r2": {"link_to": ["r1", "fw1", "r3"]},
+         "r3": {"link_to": ["r1", "r2", "fw2"]},
+         "r4": {"link_to": ["fw2", "h1", "h2"]},
+         "r5": {"link_to": ["fw2", "h3", "h4"]},
          "d1": {},
          "d2": {},
-         "fw1": {},
+         "fw1": {"link_to": ["d1", "d2"]},
          "fw2": {},
          "h1": {},
          "h2": {},
          "h3": {},
          "h4": {},
-         "a1": {},
-         "c1": {}}
+         "a1": {"link_to": ["c1"]},
+         "c1": {"link_to": ["a1"]}}
 
 
 # create nodes
