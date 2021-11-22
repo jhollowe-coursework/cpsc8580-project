@@ -20,8 +20,8 @@ global_setup_commands = ["sudo apt update",
                          "sudo apt install -y openvswitch-switch"]
 
 
-nodes = {"r1": {"setup_commands": ['pwd | sudo tee /setup_test.txt']},
-         "r2": {},
+nodes = {"r1": {"link_to": ["r2"], "setup_commands": ['pwd | sudo tee /setup_test.txt']},
+         "r2": {"link_to": ["r1"]},
          "r3": {},
          "r4": {},
          "r5": {},
@@ -40,7 +40,7 @@ nodes = {"r1": {"setup_commands": ['pwd | sudo tee /setup_test.txt']},
 # create nodes
 for node_name in nodes:
     node = request.XenVM(node_name)
-    nodes[node_name]["node_obj"] = node
+    nodes[node_name]["_node_obj"] = node
 
     node.disk_image = os_urn
 
@@ -52,6 +52,24 @@ for node_name in nodes:
     for cmd in (nodes[node_name].get("setup_commands") or []):
         node.addService(pg.Execute(base_shell, cmd))
 
+# create links on instantiated nodes
+for node_name in nodes:
+    for link_dest in (nodes[node_name].get("link_to") or []):
+
+        # create a place to store link objects
+        if nodes[node_name].get("_link_objs") is None:
+            nodes[node_name]["_link_objs"] = []
+
+        # create the link
+        node_self = nodes[node_name]["_node_obj"]
+        node_other = nodes[link_dest]["_node_obj"]
+        link = request.Link(members=[node_self, node_other])
+        nodes[node_name]["_link_objs"].append(link)
+
+        # ensure a duplicate reverse link will not be created
+        if nodes[link_dest].get("link_to") is not None:
+            if node_name in nodes[link_dest]["link_to"]:
+                nodes[link_dest]["link_to"].remove(node_name)
 
 # Print the generated rspec
 pc.printRequestRSpec(request)
