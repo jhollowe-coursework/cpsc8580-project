@@ -34,7 +34,7 @@ nodes = {"r1": {"link_to": ["r2", "fw1"], "setup_commands": ['pwd | sudo tee /se
          "h3": {},
          "h4": {},
          "a1": {"link_to": ["c1"]},
-         "c1": {"link_to": ["a1"]}}
+         "c1": {"link_to": ["a1"], "setup_commands": ['sudo /local/repository/scripts/setup_floodlight.sh']}}
 
 
 # create nodes
@@ -70,6 +70,10 @@ for node_name in nodes:
         if nodes[link_dest].get("link_to") is not None:
             if node_name in nodes[link_dest]["link_to"]:
                 nodes[link_dest]["link_to"].remove(node_name)
+
+
+# customizations
+nodes["c1"]["_node_obj"].routable_control_ip = True
 
 # Print the generated rspec
 pc.printRequestRSpec(request)
