@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 
 from distutils.version import LooseVersion
 from ansible.plugins.inventory import BaseInventoryPlugin, Constructable, Cacheable
-from ansible.errors import AnsibleError
+from ansible.errors import AnsibleError, AnsibleAuthenticationFailure, AnsibleOptionsError
 
 # 3rd party imports
 try:
@@ -146,8 +146,8 @@ class InventoryModule(BaseInventoryPlugin):
 
         # ensure the login was a success
         if r.url == login_url:
-            raise AnsibleError(
-                f"Unable to login to Cloudlab as {data['uid']})")
+            raise AnsibleAuthenticationFailure(
+                f"Unable to login to Cloudlab as {data['uid']}")
 
     def _get_element_children(self, node, tag):
         '''get immediate children of `node` and wildcard filter by tag (ignoring scheme URL)'''
@@ -171,6 +171,9 @@ class InventoryModule(BaseInventoryPlugin):
             r_json = r.json()["value"]
         except ValueError:
             raise AnsibleError("Unable to parse experiment data")
+
+        if isinstance(r_json, str) and re.match(r'no such instance uuid:.*', r_json):
+            raise AnsibleOptionsError(r_json)
 
         for location in r_json:
             # pull out the location's name from its URN
