@@ -1,0 +1,43 @@
+- name: Setup openvswitch on Routers and Firewalls
+  hosts: r*,fw*
+  # hosts: r1,r2
+  become: true
+
+  tasks:
+  - name: Create Bridge
+    openvswitch.openvswitch.openvswitch_bridge:
+      bridge: "{{ inventory_hostname }}_bridge"
+      state: present
+
+  - name: Create IP->Interface Mapping
+    no_log: true
+    set_fact:
+      ip_to_interface: "{{ ip_to_interface | default([]) | combine({item.value['ipv4']['address']: item.key}) }}"
+    with_items: "{{ (ansible_facts | dict2items | selectattr('key', 'in', ansible_facts.interfaces)) | rejectattr('key', 'match', '.*_bridge$') }}"
+
+  - name: Filter interfaces by private IP
+    no_log: true
+    set_fact:
+      data_plane_interfaces: "{{ data_plane_interfaces | default([]) + [ip_to_interface[item] ] }}"
+      # | selectattr('value.ipv4.address', 'in', '127.0.0.1')
+    with_items: "{{ cloudlab_facts.network['all_private_ipv4'] }}"
+
+  - name: Add Interfaces to Bridge as Ports
+    openvswitch.openvswitch.openvswitch_port:
+      bridge: "{{ inventory_hostname }}_bridge"
+      port: "{{ item }}"
+      state: present
+    with_items: "{{ data_plane_interfaces }}"
+
+  - name: Disable Interfaces
+    shell:
+      cmd: "sudo ifconfig {{ item }} down"
+    with_items: "{{ data_plane_interfaces }}"
+
+  - name: Setup Bridge Interface
+    shell:
+      cmd: "sudo ifconfig {{ inventory_hostname }}_bridge 10.100.0.{{ansible_play_batch.index(ansible_hostname) + 1}} netmask 255.255.255.0 up"
+
+  - name: Set Controller
+    shell:
+      cmd: "ovs-vsctl set-controller {{ inventory_hostname }}_bridge tcp:{{ hostvars['c1'].cloudlab_facts.network.public.ipv4 }}:6653"
