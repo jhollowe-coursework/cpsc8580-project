@@ -88,6 +88,10 @@ DOCUMENTATION = '''
         description: if true a group for each site will be created
         default: true
         type: bool
+      set_facts:
+        description: if true sets additional facts on the hosts
+        default: true
+        type: bool
 '''
 
 EXAMPLES = '''
@@ -202,6 +206,46 @@ class InventoryModule(BaseInventoryPlugin):
                 if node.attrib.get("component_manager_id") == location:
                     # add host(node name) and put in site group
                     self.inventory.add_host(node_name)
+
+                    # set facts on host (if configured)
+                    if (self.get_option("set_facts")):
+                        facts = {"network": {}}
+                        host = self._get_element_children(node, "host")[0]
+                        pub_ip = host.attrib.get("ipv4")
+                        if (pub_ip):
+                            facts["network"]["public"] = {}
+                            facts["network"]["public"]["ipv4"] = host.attrib.get("ipv4")
+                            facts["network"]["public"]["hostname"] = host.attrib.get("name")
+
+                        for interface in self._get_element_children(node, "interface"):
+                            if_name = self.to_safe(interface.attrib.get("client_id"))
+                            facts["network"][if_name] = {}
+                            facts["network"][if_name]["mac"] = interface.attrib.get("mac_address")
+                            # self.inventory.set_variable(node_name, f"cloudlab_network_{if_name}_mac",interface.attrib.get("mac_address"))
+                            for if_ip in self._get_element_children(interface, "ip"):
+                                facts["network"][if_name][if_ip.attrib.get('type')] = {}
+                                facts["network"][if_name][if_ip.attrib.get('type')]["address"] = if_ip.attrib.get("address")
+                                facts["network"][if_name][if_ip.attrib.get('type')]["netmask"] = if_ip.attrib.get("netmask")
+
+                                # create new list with this IP or add to existing list
+                                facts["network"]["all_private_" + if_ip.attrib.get('type')] = (facts["network"].get("all_private_" + if_ip.attrib.get('type')) or []) + [if_ip.attrib.get("address")]
+
+                        sliver = self._get_element_children(node, "sliver_type")[0]
+                        disk_urn = self._get_element_children(sliver, "disk_image")[0].get("name")
+                        if (disk_urn):
+                            facts["storage"] = {}
+                            facts["storage"]["disk_urn"] = disk_urn
+
+                        vnode = self._get_element_children(node, "vnode")[0]
+                        facts["vnode"] = {}
+                        facts["vnode"]["name"] = vnode.attrib.get("name")
+                        facts["vnode"]["type"] = vnode.attrib.get("hardware_type")
+
+                        self.inventory.set_variable(node_name, "cloudlab_facts", facts)
+
+
+
+
                     if self.get_option("group_per_site"):
                         self.inventory.add_child(location_group, node_name)
 
