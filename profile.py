@@ -20,7 +20,7 @@ global_setup_commands = ["sudo apt update",
                          "sudo apt install -y openvswitch-switch"]
 
 
-nodes = {"r1": {"link_to": ["r2", "fw1"], "setup_commands": ['pwd | sudo tee /setup_test.txt']},
+nodes = {"r1": {"link_to": ["r2", "fw1"]},
          "r2": {"link_to": ["r1", "fw1", "r3"]},
          "r3": {"link_to": ["r1", "r2", "fw2"]},
          "r4": {"link_to": ["fw2", "h1", "h2"]},
@@ -34,7 +34,7 @@ nodes = {"r1": {"link_to": ["r2", "fw1"], "setup_commands": ['pwd | sudo tee /se
          "h3": {},
          "h4": {},
          "a1": {"link_to": ["c1"]},
-         "c1": {"link_to": ["a1"], "setup_commands": ['sudo /local/repository/scripts/setup_floodlight.sh']}}
+         "c1": {"link_to": ["a1"], "setup_commands": ["sudo /local/repository/scripts/setup_floodlight.sh", "sudo /local/repository/scripts/run_floodlight.sh"]}}
 
 
 # create nodes
